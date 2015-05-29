@@ -588,6 +588,8 @@ void RLMTrackDeletions(__unsafe_unretained RLMRealm *const realm, dispatch_block
                 for (auto observer : objectSchema->_observers) {
                     if (observer->_row && observer->_row.get_index() == row.row_ndx) {
                         changes.push_back({observer, @"invalidated"});
+                        for (RLMProperty *prop in objectSchema.properties)
+                            changes.push_back({observer, prop.name});
                         break;
                     }
                 }
@@ -639,10 +641,14 @@ void RLMTrackDeletions(__unsafe_unretained RLMRealm *const realm, dispatch_block
 
     block();
 
-    for (auto const& change : changes)
+    for (auto const& change : changes) {
+        change.observable->_returnNil = true;
         [change.observable didChangeValueForKey:change.property];
-    for (auto const& change : arrayChanges)
+    }
+    for (auto const& change : arrayChanges) {
+        change.observable->_returnNil = true;
         [change.observable didChange:NSKeyValueChangeRemoval valuesAtIndexes:change.indexes forKey:change.property];
+    }
 
     realm.group->notify_thing = nullptr;
 }
